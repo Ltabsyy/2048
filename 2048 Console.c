@@ -5,6 +5,7 @@
 #include <windows.h>
 
 int board[5][5]={0};//地图，存2的幂
+int lineBoard[5]={0};
 int difficulty = 4;//难度，可以是3-5阶，一般为4阶
 
 // 2048算法
@@ -30,7 +31,7 @@ void Fresh()
 		c = rand() % difficulty;
 		if(board[r][c] == 0)
 		{
-			board[r][c] = 1 + rand()%2;//随机放置2或4
+			board[r][c] = 1 + (rand()%10 == 0);//随机放置2或4
 			break;
 		}
 	}
@@ -64,98 +65,81 @@ int CanMove()
 	return 0;
 }
 
+void MergeLine()
+{
+	int i, i1, i2, b;
+	for(i=0; i<difficulty; i++)
+	{
+		for(i1=i; i1<difficulty && lineBoard[i1] == 0; i1++);//找第1个数
+		if(i1 == difficulty) break;//不存在第1个数
+		if(i1 == difficulty-1)//不存在第2个数
+		{
+			b = lineBoard[i1];//移动
+			lineBoard[i1] = 0;
+			lineBoard[i] = b;
+			break;
+		}
+		for(i2=i1+1; i2<difficulty && lineBoard[i2] == 0; i2++);//找第2个数
+		if(i2 == difficulty)//不存在第2个数
+		{
+			b = lineBoard[i1];//移动
+			lineBoard[i1] = 0;
+			lineBoard[i] = b;
+			break;
+		}
+		if(lineBoard[i1] == lineBoard[i2])//合并
+		{
+			b = lineBoard[i1]+1;
+			lineBoard[i1] = 0;
+			lineBoard[i2] = 0;
+			lineBoard[i] = b;
+		}
+		else
+		{
+			b = lineBoard[i1];//移动第1个数
+			lineBoard[i1] = 0;
+			lineBoard[i] = b;
+		}
+	}
+}
+
 void Move(char direction)
 {
-	int r, c, i;
-	for(i=0; i<difficulty-1; i++)
+	int r, c, i, i1, i2;
+	if(direction == 'a')
 	{
-		if(direction == 'a')
+		for(r=0; r<difficulty; r++)
 		{
-			for(r=0; r<difficulty; r++)
-			{
-				for(c=1; c<difficulty; c++)
-				{
-					if(board[r][c] != 0)
-					{
-						if(board[r][c-1] == 0)//移动
-						{
-							board[r][c-1] = board[r][c];
-							board[r][c] = 0;
-						}
-						else if(board[r][c-1] == board[r][c])//合并
-						{
-							board[r][c-1]++;
-							board[r][c] = 0;
-						}
-					}
-				}
-			}
+			for(c=0; c<difficulty; c++) lineBoard[c] = board[r][c];
+			MergeLine();
+			for(c=0; c<difficulty; c++) board[r][c] = lineBoard[c];
 		}
-		else if(direction == 'd')
+	}
+	else if(direction == 'd')
+	{
+		for(r=0; r<difficulty; r++)
 		{
-			for(r=0; r<difficulty; r++)
-			{
-				for(c=difficulty-2; c>=0; c--)
-				{
-					if(board[r][c] != 0)
-					{
-						if(board[r][c+1] == 0)//移动
-						{
-							board[r][c+1] = board[r][c];
-							board[r][c] = 0;
-						}
-						else if(board[r][c+1] == board[r][c])//合并
-						{
-							board[r][c+1]++;
-							board[r][c] = 0;
-						}
-					}
-				}
-			}
+			for(c=0; c<difficulty; c++) lineBoard[difficulty-1-c] = board[r][c];
+			MergeLine();
+			for(c=0; c<difficulty; c++) board[r][c] = lineBoard[difficulty-1-c];
 		}
-		else if(direction == 'w')
+	}
+	else if(direction == 'w')
+	{
+		for(c=0; c<difficulty; c++)
 		{
-			for(c=0; c<difficulty; c++)
-			{
-				for(r=1; r<difficulty; r++)
-				{
-					if(board[r][c] != 0)
-					{
-						if(board[r-1][c] == 0)//移动
-						{
-							board[r-1][c] = board[r][c];
-							board[r][c] = 0;
-						}
-						else if(board[r-1][c] == board[r][c])//合并
-						{
-							board[r-1][c]++;
-							board[r][c] = 0;
-						}
-					}
-				}
-			}
+			for(r=0; r<difficulty; r++) lineBoard[r] = board[r][c];
+			MergeLine();
+			for(r=0; r<difficulty; r++) board[r][c] = lineBoard[r];
 		}
-		else if(direction == 's')
+	}
+	else if(direction == 's')
+	{
+		for(c=0; c<difficulty; c++)
 		{
-			for(c=0; c<difficulty; c++)
-			{
-				for(r=difficulty-2; r>=0; r--)
-				{
-					if(board[r][c] != 0)
-					{
-						if(board[r+1][c] == 0)//移动
-						{
-							board[r+1][c] = board[r][c];
-							board[r][c] = 0;
-						}
-						else if(board[r+1][c] == board[r][c])//合并
-						{
-							board[r+1][c]++;
-							board[r][c] = 0;
-						}
-					}
-				}
-			}
+			for(r=0; r<difficulty; r++) lineBoard[difficulty-1-r] = board[r][c];
+			MergeLine();
+			for(r=0; r<difficulty; r++) board[r][c] = lineBoard[difficulty-1-r];
 		}
 	}
 }
@@ -247,3 +231,10 @@ int main()
 	system("pause");
 	return 0;
 }
+
+/*--------------------------------
+更新日志：
+2048 0.2
+——优化 出4概率由50%下降至10%
+——优化 不再连续合成，如2222将合成4400而不是8000
+--------------------------------*/
