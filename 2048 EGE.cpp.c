@@ -8,19 +8,6 @@ int lineBoard[10]={0};
 int difficulty = 4;//难度，可以是3-5阶，一般为4阶
 
 // 2048算法
-void Init()
-{
-	int r, c;
-	for(r=0; r<difficulty; r++)
-	{
-		for(c=0; c<difficulty; c++)
-		{
-			board[r][c] = 0;//重置
-		}
-	}
-	srand(time(NULL));
-}
-
 void Fresh()
 {
 	int r, c;
@@ -36,17 +23,19 @@ void Fresh()
 	}
 }
 
-int NoSpace()
+void Init()
 {
 	int r, c;
 	for(r=0; r<difficulty; r++)
 	{
 		for(c=0; c<difficulty; c++)
 		{
-			if(board[r][c] == 0) return 0;//存在空
+			board[r][c] = 0;//重置
 		}
 	}
-	return 1;
+	srand(time(NULL));
+	Fresh();//生成2个起始块
+	Fresh();
 }
 
 int CanMove()
@@ -64,53 +53,56 @@ int CanMove()
 	return 0;
 }
 
-void MergeLine()
+int MergeLine()
 {
 	int i, i1, i2, b;
+	int isChanged = 0;
 	for(i=0; i<difficulty; i++)
 	{
 		for(i1=i; i1<difficulty && lineBoard[i1] == 0; i1++);//找第1个数
 		if(i1 == difficulty) break;//不存在第1个数
-		if(i1 == difficulty-1)//不存在第2个数
-		{
-			b = lineBoard[i1];//移动
-			lineBoard[i1] = 0;
-			lineBoard[i] = b;
-			break;
-		}
 		for(i2=i1+1; i2<difficulty && lineBoard[i2] == 0; i2++);//找第2个数
 		if(i2 == difficulty)//不存在第2个数
 		{
-			b = lineBoard[i1];//移动
-			lineBoard[i1] = 0;
-			lineBoard[i] = b;
-			break;
+			if(i1 != i)//移动i1到i
+			{
+				lineBoard[i] = lineBoard[i1];
+				lineBoard[i1] = 0;
+				isChanged++;
+			}
+			break;//全部工作已结束
 		}
 		if(lineBoard[i1] == lineBoard[i2])//合并
 		{
-			b = lineBoard[i1]+1;
+			b = lineBoard[i1]+1;//通过b暂存，合并考虑i1和i是否相同
 			lineBoard[i1] = 0;
 			lineBoard[i2] = 0;
 			lineBoard[i] = b;
+			isChanged++;
 		}
-		else
+		else//两数不同，只移动第1个数，第2个数在下次循环时考虑
 		{
-			b = lineBoard[i1];//移动第1个数
-			lineBoard[i1] = 0;
-			lineBoard[i] = b;
+			if(i1 != i)//移动i1到i
+			{
+				lineBoard[i] = lineBoard[i1];
+				lineBoard[i1] = 0;
+				isChanged++;
+			}
 		}
 	}
+	return isChanged;
 }
 
-void Move(char direction)
+int Move(char direction)
 {
-	int r, c, i, i1, i2;
+	int r, c;
+	int isChanged = 0;
 	if(direction == 'a')
 	{
 		for(r=0; r<difficulty; r++)
 		{
 			for(c=0; c<difficulty; c++) lineBoard[c] = board[r][c];
-			MergeLine();
+			isChanged += MergeLine();
 			for(c=0; c<difficulty; c++) board[r][c] = lineBoard[c];
 		}
 	}
@@ -119,7 +111,7 @@ void Move(char direction)
 		for(r=0; r<difficulty; r++)
 		{
 			for(c=0; c<difficulty; c++) lineBoard[difficulty-1-c] = board[r][c];
-			MergeLine();
+			isChanged += MergeLine();
 			for(c=0; c<difficulty; c++) board[r][c] = lineBoard[difficulty-1-c];
 		}
 	}
@@ -128,7 +120,7 @@ void Move(char direction)
 		for(c=0; c<difficulty; c++)
 		{
 			for(r=0; r<difficulty; r++) lineBoard[r] = board[r][c];
-			MergeLine();
+			isChanged += MergeLine();
 			for(r=0; r<difficulty; r++) board[r][c] = lineBoard[r];
 		}
 	}
@@ -137,10 +129,11 @@ void Move(char direction)
 		for(c=0; c<difficulty; c++)
 		{
 			for(r=0; r<difficulty; r++) lineBoard[difficulty-1-r] = board[r][c];
-			MergeLine();
+			isChanged += MergeLine();
 			for(r=0; r<difficulty; r++) board[r][c] = lineBoard[difficulty-1-r];
 		}
 	}
+	return isChanged;
 }
 
 // EGE专用
@@ -233,12 +226,10 @@ int main()
 	Init();//初始化
 	//初始化窗口
 	resizewindow(sideLength*difficulty, sideLength*difficulty);
-	while(1)
+	DrawBoard();
+	delay_ms(0);
+	while(CanMove())//判断终局
 	{
-		if(NoSpace()) break;//判断终局1
-		Fresh();//刷新
-		DrawBoard();//刷新显示
-		if(!CanMove()) break;//判断终局2
 		//获取操作
 		for(direction = 0; direction == 0;)//无操作时在此处循环
 		{
@@ -263,9 +254,14 @@ int main()
 					direction = 0;
 				}
 			}
-			delay_ms(100);//最好延时一下
+			delay_ms(25);//最好延时一下
 		}
-		Move(direction);//移动
+		if(Move(direction))//移动，仅移动有效时刷新块
+		{
+			Fresh();//刷新块
+			DrawBoard();//刷新显示
+			delay_ms(0);
+		}
 	}
 	//终局，可以显示分数
 	//resizewindow(sideLength*difficulty, sideLength*(difficulty+1));
@@ -282,4 +278,8 @@ int main()
 2048 0.2
 ——优化 出4概率由50%下降至10%
 ——优化 不再连续合成，如2222将合成4400而不是8000
+2048 0.3
+——优化 生成2个起始块
+——优化 无效操作不再刷出新块
+——优化 刷新率从10Hz提高到40Hz
 --------------------------------*/
