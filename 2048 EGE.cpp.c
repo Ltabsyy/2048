@@ -6,6 +6,7 @@
 int board[10][10]={0};//地图，存2的幂
 int lineBoard[10]={0};
 int difficulty = 4;//难度，可以是3-5阶，一般为4阶
+int score;//分数，即合并后数之和
 
 // 2048算法
 void Fresh()
@@ -33,6 +34,7 @@ void Init()
 			board[r][c] = 0;//重置
 		}
 	}
+	score = 0;
 	srand(time(NULL));
 	Fresh();//生成2个起始块
 	Fresh();
@@ -79,6 +81,7 @@ int MergeLine()
 			lineBoard[i2] = 0;
 			lineBoard[i] = b;
 			isChanged++;
+			score += (1 << b);
 		}
 		else//两数不同，只移动第1个数，第2个数在下次循环时考虑
 		{
@@ -264,8 +267,9 @@ int main()
 		}
 	}
 	//终局，可以显示分数
-	//resizewindow(sideLength*difficulty, sideLength*(difficulty+1));
-	//DrawBoard();
+	resizewindow(sideLength*difficulty, sideLength*(difficulty+1));
+	DrawBoard();
+	rectprintf(0, sideLength*difficulty, sideLength*difficulty, sideLength, "%d", score);
 	delay_ms(2000);
 	flushkey();
 	getch();
@@ -282,4 +286,6 @@ int main()
 ——优化 生成2个起始块
 ——优化 无效操作不再刷出新块
 ——优化 刷新率从10Hz提高到40Hz
+2048 0.4
+——新增 分数
 --------------------------------*/
