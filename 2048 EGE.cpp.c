@@ -3,8 +3,9 @@
 #include <time.h>
 #include "graphics.h"
 
-int board[10][10]={0};//地图，存2的幂
-int lineBoard[10]={0};
+#define MaxDiff 10
+int board[MaxDiff][MaxDiff]={0};//地图，存2的幂
+int lineBoard[MaxDiff]={0};
 int difficulty = 4;//难度，可以是3-5阶，一般为4阶
 int score;//分数，即合并后数之和
 
@@ -146,34 +147,37 @@ void DrawBlock(int x, int y, int number)
 	int edgeWidth = sideLength/16;
 	int fontSize;
 	color_t fontColor, fillColor;
-	color_t fillColorList[16] = {
-		EGERGB(254, 228, 227),//0
-		EGERGB(254, 228, 227),//2
-		EGERGB(254, 206, 206),//4
-		EGERGB(254, 192, 193),//8
-		EGERGB(253, 162, 161),//16
-		EGERGB(255, 141, 141),//32
-		EGERGB(253, 117, 117),//64
-		EGERGB(254, 156, 5),//128
-		EGERGB(253, 136, 1),//256
-		EGERGB(255, 199, 54),//512
-		EGERGB(255, 212, 101),//1024
-		EGERGB(254, 223, 141),//2048
-		EGERGB(242, 175, 210),//4096
-		EGERGB(242, 175, 210),//8192
-		EGERGB(242, 175, 210),//16384
-		EGERGB(242, 175, 210)//>32768
+	static const color_t fillColorList[16] = {
+		EGERGB(238, 228, 218),//0
+		EGERGB(238, 228, 218),//2
+		EGERGB(237, 224, 200),//4
+		EGERGB(242, 177, 121),//8
+		EGERGB(245, 149, 99),//16
+		EGERGB(246, 124, 95),//32
+		EGERGB(246, 94, 59),//64
+		EGERGB(237, 207, 114),//128
+		EGERGB(237, 204, 97),//256
+		EGERGB(237, 200, 80),//512
+		EGERGB(237, 197, 63),//1024
+		EGERGB(237, 194, 46),//2048
+		EGERGB(145, 0, 207),//4096
+		EGERGB(89, 0, 128),//8192
+		EGERGB(54, 0, 77),//16384
+		BLACK//>32768
 	};
 	if(number < 10) fontSize = sideLength*3/4;
 	else if(number < 100) fontSize = sideLength*2/3;
 	else if(number < 1000) fontSize = sideLength/2;
 	else fontSize = sideLength/3;
-	fontColor = EGERGB(163, 95, 95);
 	int i = 0;
 	for(; number > (1 << i); i++);
-	fillColor = fillColorList[i];
+	if(number == 3) i--;
+	if(i > 15) fillColor = fillColorList[15];
+	else fillColor = fillColorList[i];
+	if(i < 3) fontColor = GRAY;
+	else fontColor = WHITE;
 	// 背景和边框
-	setfillcolor(WHITE);
+	setfillcolor(PAPAYAWHIP);
 	ege_fillrect(x, y, sideLength, sideLength);
 	setfillcolor(fillColor);
 	ege_fillroundrect(x+edgeWidth, y+edgeWidth, sideLength-2*edgeWidth, sideLength-2*edgeWidth, edgeWidth);
@@ -182,7 +186,7 @@ void DrawBlock(int x, int y, int number)
 	{
 		setfont(fontSize, 0, "Consolas");
 		setcolor(fontColor);
-		rectprintf(x, y, sideLength, sideLength, "%d", number);
+		rectprintf(x+edgeWidth, y+edgeWidth, sideLength-2*edgeWidth, sideLength-2*edgeWidth, "%d", number);
 	}
 }
 
@@ -194,7 +198,63 @@ void DrawBoard()
 		for(c=0; c<difficulty; c++)
 		{
 			DrawBlock(sideLength*c, sideLength*r, 1 << board[r][c]);
+			//DrawBlock(sideLength*c, sideLength*r, 1 << (r*difficulty+c));
 		}
+	}
+}
+
+void DrawDisc()//绘制滑盘
+{
+	int i;
+	int cx1 = sideLength*difficulty;
+	int cy1 = 0;
+	int cd = sideLength*3;
+	int cr = cd/2;
+	setfillcolor(PINK);
+	for(i=0; i<4; i++)
+	{
+		ege_fillpie(cx1, cy1, cd, cd, i*90+45+5, 80);
+	}
+	//挖出中洞和字符
+	setfillcolor(WHITE);
+	ege_fillcircle(cx1+cr, cy1+cr, cr/3);
+	setfont(sideLength*3/4, 0, "Consolas");
+	setcolor(WHITE);
+	outtextxy(cx1+cr, cy1+cr/3, 'W');
+	outtextxy(cx1+cr/3, cy1+cr, 'A');
+	outtextxy(cx1+cr, cy1+cd-cr/3, 'S');
+	outtextxy(cx1+cd-cr/3, cy1+cr, 'D');
+}
+
+void DrawSelection()
+{
+	DrawBlock(sideLength*0, 0, 3);
+	DrawBlock(sideLength*1, 0, 4);
+	DrawBlock(sideLength*2, 0, 5);
+}
+
+void DrawEnd()
+{
+	if(difficulty == 3) resizewindow(sideLength*(difficulty+3), sideLength*(difficulty+1));
+	DrawBoard();
+	DrawDisc();
+	setfont(sideLength*3/4, 0, "Consolas");
+	setcolor(GRAY);
+	if(difficulty < 3) rectprintf(0, sideLength*difficulty, sideLength*difficulty, sideLength, "%d", score);
+	else rectprintf(sideLength*difficulty, sideLength*3, sideLength*3, sideLength, "%d", score);
+}
+
+void Resize(char mode)//调整显示大小
+{
+	if(mode == '+')//32-96时每格调整4，96+时16
+	{
+		if(sideLength >= 96) sideLength += 16;
+		else sideLength += 4;
+	}
+	else if(mode == '-')
+	{
+		if(sideLength > 96) sideLength -= 16;
+		else if(sideLength > 32) sideLength -= 4;
 	}
 }
 
@@ -202,6 +262,27 @@ int main()
 {
 	char direction;
 	mouse_msg mouseMsg;
+	key_msg keyMsg;
+	int isSliding = 0;
+	//自适应显示大小
+	int screenHeight, screenWidth;
+	DEVMODE dm;
+	dm.dmSize = sizeof(DEVMODE);
+	if(EnumDisplaySettings(NULL, ENUM_CURRENT_SETTINGS, &dm) == 0)//无法获取显示屏分辨率
+	{
+		screenWidth = 1920;
+		screenHeight = 1080;
+	}
+	else
+	{
+		screenWidth = dm.dmPelsWidth;
+		screenHeight = dm.dmPelsHeight;
+	}
+	if(screenHeight >= 2160) sideLength = 192;
+	else if(screenHeight >= 1440) sideLength = 128;
+	else if(screenHeight >= 1080) sideLength = 96;
+	else sideLength = 72;
+	//初始化窗口
 	setcaption("2048");
 	SetProcessDPIAware();
 	initgraph(sideLength*3, sideLength, INIT_RENDERMANUAL);
@@ -211,9 +292,7 @@ int main()
 	ege_enable_aa(true);
 	for(difficulty = 0; difficulty == 0;)
 	{
-		DrawBlock(sideLength*0, 0, 3);
-		DrawBlock(sideLength*1, 0, 4);
-		DrawBlock(sideLength*2, 0, 5);
+		DrawSelection();
 		while(mousemsg())
 		{
 			mouseMsg = getmouse();
@@ -221,43 +300,103 @@ int main()
 			{
 				difficulty = mouseMsg.x/sideLength + 3;
 			}
+			if(mouseMsg.is_wheel() && keystate(key_control))
+			{
+				Resize(mouseMsg.wheel > 0 ? '+' : '-');
+				resizewindow(sideLength*3, sideLength);
+				DrawSelection();
+			}
+		}
+		while(kbmsg())
+		{
+			keyMsg = getkey();
+			if(keyMsg.msg == key_msg_down)
+			{
+				if(keyMsg.key >= '1' && keyMsg.key <= '9')
+				{
+					difficulty = keyMsg.key-'1'+1;
+				}
+				else if(keyMsg.key >= key_num1 && keyMsg.key <= key_num9)//小键盘
+				{
+					difficulty = keyMsg.key-key_num1+1;
+				}
+			}
 		}
 		delay_ms(100);
 	}
 	if(difficulty < 2) difficulty = 2;//1阶会直接输
-	if(difficulty > 10) difficulty = 10;
+	if(difficulty > MaxDiff) difficulty = MaxDiff;
+restart:
 	Init();//初始化
 	//初始化窗口
-	resizewindow(sideLength*difficulty, sideLength*difficulty);
+	resizewindow(sideLength*(difficulty+3), sideLength*(difficulty < 3 ? 3 : difficulty));
 	DrawBoard();
+	DrawDisc();
 	delay_ms(0);
 	while(CanMove())//判断终局
 	{
 		//获取操作
 		for(direction = 0; direction == 0;)//无操作时在此处循环
 		{
-			if(kbhit())
+			while(kbmsg())
 			{
-				direction = getch();
-				if(direction == 'w' || direction == 'a' || direction == 's' || direction == 'd')
+				keyMsg = getkey();
+				if(keyMsg.msg == key_msg_down)
 				{
-					break;
-				}
-				else if(direction == key_left || direction == key_up
-					|| direction == key_right || direction == key_down)
-				{
-					if(direction == key_left) direction = 'a';
-					else if(direction == key_up) direction = 'w';
-					else if(direction == key_right) direction = 'd';
-					else if(direction == key_down) direction = 's';
-					break;
-				}
-				else
-				{
-					direction = 0;
+					direction = keyMsg.key;
+					if(direction == 'W' || direction == 'A' || direction == 'S' || direction == 'D')
+					{
+						direction = direction-'A'+'a';
+						break;
+					}
+					else if(direction == key_left || direction == key_up
+						|| direction == key_right || direction == key_down)
+					{
+						if(direction == key_left) direction = 'a';
+						else if(direction == key_up) direction = 'w';
+						else if(direction == key_right) direction = 'd';
+						else if(direction == key_down) direction = 's';
+						break;
+					}
+					else if(direction == 'R')
+					{
+						Init();
+						DrawBoard();
+					}
+					else
+					{
+						direction = 0;
+					}
 				}
 			}
-			delay_ms(25);//最好延时一下
+			while(mousemsg())//鼠标滑盘操作
+			{
+				mouseMsg = getmouse();
+				if(mouseMsg.is_down()) isSliding = 1;
+				if(mouseMsg.is_up()) isSliding = 0;
+				if(isSliding)
+				{
+					int xc = mouseMsg.x - sideLength*difficulty;
+					int yc = mouseMsg.y;
+					int dc = sideLength*3;
+					if(xc >= 0 && xc < dc && yc >= 0 && yc < dc)
+					{
+						//将坐标转译成方向
+						int index = (yc > xc) + 2*(yc > dc-1-xc);//存储分别与主副对角线的比较结果
+						direction = "wads"[index];
+						break;
+					}
+					else isSliding = 0;
+				}
+				if(mouseMsg.is_wheel() && keystate(key_control))
+				{
+					Resize(mouseMsg.wheel > 0 ? '+' : '-');
+					resizewindow(sideLength*(difficulty+3), sideLength*(difficulty < 3 ? 3 : difficulty));
+					DrawBoard();
+					DrawDisc();
+				}
+			}
+			if(!isSliding) delay_ms(25);//最好延时一下
 		}
 		if(Move(direction))//移动，仅移动有效时刷新块
 		{
@@ -266,13 +405,36 @@ int main()
 			delay_ms(0);
 		}
 	}
-	//终局，可以显示分数
-	resizewindow(sideLength*difficulty, sideLength*(difficulty+1));
-	DrawBoard();
-	rectprintf(0, sideLength*difficulty, sideLength*difficulty, sideLength, "%d", score);
-	delay_ms(2000);
-	flushkey();
-	getch();
+	//终局，显示分数
+	DrawEnd();
+	delay_ms(100);
+	while(1)
+	{
+		while(mousemsg())
+		{
+			mouseMsg = getmouse();
+			if(mouseMsg.is_wheel() && keystate(key_control))
+			{
+				Resize(mouseMsg.wheel > 0 ? '+' : '-');
+				resizewindow(sideLength*(difficulty+3), sideLength*(difficulty < 3 ? 3 : difficulty));
+				DrawEnd();
+			}
+		}
+		while(kbmsg())
+		{
+			keyMsg = getkey();
+			if(keyMsg.msg == key_msg_down)
+			{
+				if(keyMsg.key == 'R')
+				{
+					cleardevice();
+					isSliding = 0;
+					goto restart;
+				}
+			}
+		}
+		delay_ms(50);
+	}
 	closegraph();
 	return 0;
 }
@@ -288,4 +450,11 @@ int main()
 ——优化 刷新率从10Hz提高到40Hz
 2048 0.4
 ——新增 分数
+2048 EGE 0.5
+——新增 滑盘
+——新增 显示大小的自适应和Ctrl+滚轮调整
+——新增 按数字键选择阶数
+——新增 按R重玩一局
+——优化 重新设计主题配色
+——修复 65536开始的背景色
 --------------------------------*/
